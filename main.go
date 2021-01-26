@@ -20,10 +20,20 @@ import (
 	"github.com/lllamnyp/consensus-backend/internal/redisstore"
 	"github.com/lllamnyp/consensus-backend/internal/server"
 	"github.com/lllamnyp/consensus-backend/pkg/poll"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 func main() {
-	rclient := redis.NewClient(&redis.Options{Addr: ":6379"})
-	p := poll.New(redisstore.NewRedisStore(rclient))
+	pflag.String("redis-endpoint", "", "Specify the host and port of your redis backend")
+	viper.BindPFlags(pflag.CommandLine)
+	var s poll.Store
+	if ep := viper.GetString("redis-endpoint"); ep == "" {
+		s = poll.NewInMemoryStore()
+	} else {
+		rclient := redis.NewClient(&redis.Options{Addr: ep})
+		s = redisstore.NewRedisStore(rclient)
+	}
+	p := poll.New(s)
 	server.Serve(p)
 }
