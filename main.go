@@ -15,8 +15,15 @@ limitations under the License.
 */
 package main
 
-import "github.com/lllamnyp/consensus-backend/cmd"
+import (
+	"github.com/go-redis/redis"
+	"github.com/lllamnyp/consensus-backend/internal/redisstore"
+	"github.com/lllamnyp/consensus-backend/internal/server"
+	"github.com/lllamnyp/consensus-backend/pkg/poll"
+)
 
 func main() {
-	cmd.Execute()
+	rclient := redis.NewClient(&redis.Options{Addr: ":6379"})
+	p := poll.New(redisstore.NewRedisStore(rclient))
+	server.Serve(p)
 }
