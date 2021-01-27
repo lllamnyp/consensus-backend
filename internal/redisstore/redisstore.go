@@ -16,6 +16,7 @@ type redisstore struct {
 
 func (s *redisstore) AddAnswer(u poll.User, a poll.Answer) {
 	s.client.HMSet("answers", map[string]interface{}{a.GetID(): a.GetContent()})
+	//s.client.("votes", map[string]interface{}{a.GetID(): a.GetContent()})
 	return
 }
 
