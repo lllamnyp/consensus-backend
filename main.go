@@ -30,6 +30,7 @@ func main() {
 	config.Logger, _ = zap.NewProduction()
 	l := config.Logger
 	pflag.String("redis-endpoint", "", "Specify the host and port of your redis backend")
+	pflag.Parse()
 	viper.BindPFlags(pflag.CommandLine)
 	var s poll.Store
 	if ep := viper.GetString("redis-endpoint"); ep == "" {
