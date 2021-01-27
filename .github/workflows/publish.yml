@@ -18,6 +18,7 @@ jobs:
     ## Publishes our image to Docker Hub 😎
     - name: Publish to Registry
       uses: elgohr/Publish-Docker-Github-Action@master
+      pre: echo ::save-state name=IMAGE_TAG::$(echo $(date +%s))
       with:
         ## the name of our image
         name: lllamnyp/consensus-backend
@@ -25,4 +26,4 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         ## and our Docker password which 
         password: ${{ secrets.DOCKER_PASSWORD }}
-        tags: "latest,$(date +%s)"
+        tags: "latest,${{ env.STATE_IMAGE_TAG }}"
