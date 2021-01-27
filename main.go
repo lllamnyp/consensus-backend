@@ -17,22 +17,28 @@ package main
 
 import (
 	"github.com/go-redis/redis"
+	"github.com/lllamnyp/consensus-backend/internal/config"
 	"github.com/lllamnyp/consensus-backend/internal/redisstore"
 	"github.com/lllamnyp/consensus-backend/internal/server"
 	"github.com/lllamnyp/consensus-backend/pkg/poll"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 )
 
 func main() {
+	config.Logger, _ = zap.NewProduction()
+	l := config.Logger
 	pflag.String("redis-endpoint", "", "Specify the host and port of your redis backend")
 	viper.BindPFlags(pflag.CommandLine)
 	var s poll.Store
 	if ep := viper.GetString("redis-endpoint"); ep == "" {
 		s = poll.NewInMemoryStore()
+		l.Info("Created new in-memory store")
 	} else {
 		rclient := redis.NewClient(&redis.Options{Addr: ep})
 		s = redisstore.NewRedisStore(rclient)
+		l.Info("Created new redis store")
 	}
 	p := poll.New(s)
 	server.Serve(p)
