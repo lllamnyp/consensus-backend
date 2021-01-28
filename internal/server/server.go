@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -15,6 +16,7 @@ import (
 )
 
 var hmacSampleSecret = os.Getenv("SIGNING_SECRET")
+var l = config.Logger
 
 func verifyToken(r *http.Request) bool {
 	tokenCookie, err := r.Cookie("AuthToken")
@@ -25,13 +27,23 @@ func verifyToken(r *http.Request) bool {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		// Don't forget to validate the alg is what you expect:
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			l.Error("Unexpected signing method", zap.Any("method", token.Header["alg"]))
+			return nil, errors.New("Unexpected signing method: " + fmt.Sprintf("%v", token.Header["alg"]))
 		}
 		return hmacSampleSecret, nil
 	})
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		if naf, err := strconv.Atoi(claims["naf"].(string)); err != nil || time.Now().Unix()*1000 > int64(naf) {
+		nafClaim, ok := claims["naf"]
+		if !ok {
+			l.Error("JWT token missing naf claim")
+			return false
+		}
+		nafString, ok := nafClaim.(string)
+		if !ok {
+			l.Error("naf claim in token holds unexpected value", zap.Any("claim", nafClaim))
+		}
+		if naf, err := strconv.Atoi(nafString); err != nil || time.Now().Unix()*1000 > int64(naf) {
 			return false
 		}
 		return true
@@ -43,7 +55,6 @@ func verifyToken(r *http.Request) bool {
 }
 
 func Serve(p poll.Poll) {
-	l := config.Logger
 	listAnswers := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/json")
 		if r.Method == "GET" {
