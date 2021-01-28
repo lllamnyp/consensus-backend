@@ -43,7 +43,7 @@ func verifyToken(r *http.Request) (string, bool) {
 		if naf, err := strconv.Atoi(nafString); err != nil || time.Now().Unix()*1000 > int64(naf) {
 			return "", false
 		}
-		usrClaim, ok := claims["usr"]
+		usrClaim, ok := claims["username"]
 		if !ok {
 			fmt.Printf("JWT token missing usr claim\n")
 			return "", false
