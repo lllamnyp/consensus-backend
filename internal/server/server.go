@@ -16,11 +16,11 @@ import (
 
 var hmacSampleSecret = []byte(os.Getenv("SIGNING_SECRET"))
 
-func verifyToken(r *http.Request) (string, bool) {
+func verifyToken(r *http.Request) (string, string, bool) {
 	tokenCookie, err := r.Cookie("AuthToken")
 	tokenString := tokenCookie.Value
 	if err != nil {
-		return "", false
+		return "", "", false
 	}
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		// Don't forget to validate the alg is what you expect:
@@ -34,46 +34,56 @@ func verifyToken(r *http.Request) (string, bool) {
 		nafClaim, ok := claims["naf"]
 		if !ok {
 			fmt.Printf("JWT token missing naf claim\n")
-			return "", false
+			return "", "", false
 		}
 		nafString, ok := nafClaim.(string)
 		if !ok {
 			fmt.Printf("naf claim in token holds unexpected value %s: %v\n", "claim", nafClaim)
-			return "", false
+			return "", "", false
 		}
 		if naf, err := strconv.Atoi(nafString); err != nil || time.Now().Unix()*1000 > int64(naf) {
-			return "", false
+			return "", "", false
 		}
 		usrClaim, ok := claims["username"]
 		if !ok {
 			fmt.Printf("JWT token missing usr claim\n")
-			return "", false
+			return "", "", false
 		}
 		usrString, ok := usrClaim.(string)
 		if !ok {
 			fmt.Printf("usr claim in token holds unexpected value %s: %v\n", "claim", usrClaim)
-			return "", false
+			return "", "", false
 		}
-
-		return usrString, true
+		subClaim, ok := claims["sub"]
+		if !ok {
+			fmt.Printf("JWT token missing usr claim\n")
+			return "", "", false
+		}
+		subString, ok := subClaim.(string)
+		if !ok {
+			fmt.Printf("sub claim in token holds unexpected value %s: %v\n", "claim", subClaim)
+			return "", "", false
+		}
+		return subString, usrString, true
 	} else {
 		fmt.Println(err)
-		return "", false
+		return "", "", false
 	}
 }
 
 func Serve(p poll.Poll) {
 	listAnswers := func(w http.ResponseWriter, r *http.Request) {
+		var login string
 		var user string
 		var ok bool
-		if user, ok = verifyToken(r); !ok {
+		if login, user, ok = verifyToken(r); !ok {
 			w.Write([]byte("{}"))
 			return
 		}
 		w.Header().Add("Content-Type", "application/json")
 		if r.Method == "GET" {
 			answers := p.ListAnswers()
-			u := poll.NewUser("", user)
+			u := poll.NewUser(login, user)
 			for id := range answers {
 				answers[id].WithUser(u)
 			}
@@ -90,12 +100,13 @@ func Serve(p poll.Poll) {
 		}
 	}
 	addAnswer := func(w http.ResponseWriter, r *http.Request) {
+		var login string
 		var user string
 		var ok bool
-		if user, ok = verifyToken(r); !ok {
+		if login, user, ok = verifyToken(r); !ok {
 			return
 		}
-		u := poll.NewUser("", user)
+		u := poll.NewUser(login, user)
 		if r.Method == "POST" {
 			r.ParseForm()
 			anonymous := r.Form["anonymous"][0] == "true"
@@ -113,12 +124,13 @@ func Serve(p poll.Poll) {
 		}
 	}
 	toggleVote := func(w http.ResponseWriter, r *http.Request) {
+		var login string
 		var user string
 		var ok bool
-		if user, ok = verifyToken(r); !ok {
+		if login, user, ok = verifyToken(r); !ok {
 			return
 		}
-		u := poll.NewUser("", user)
+		u := poll.NewUser(login, user)
 		paths := strings.Split(r.URL.Path, "/")
 		if len(paths) < 3 {
 			fmt.Printf("Unexpected vote request URI: %+v\n", r.URL.Path)
@@ -133,12 +145,13 @@ func Serve(p poll.Poll) {
 		p.ToggleVote(u, a)
 	}
 	respond := func(w http.ResponseWriter, r *http.Request) {
+		var login string
 		var user string
 		var ok bool
-		if user, ok = verifyToken(r); !ok {
+		if login, user, ok = verifyToken(r); !ok {
 			return
 		}
-		u := poll.NewUser("", user)
+		u := poll.NewUser(login, user)
 		paths := strings.Split(r.URL.Path, "/")
 		if len(paths) < 3 {
 			fmt.Printf("Unexpected response URI: %+v\n", r.URL.Path)
