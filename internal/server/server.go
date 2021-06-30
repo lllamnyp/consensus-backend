@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/lllamnyp/consensus-backend/internal/speakers"
 	"github.com/lllamnyp/consensus-backend/pkg/poll"
 )
 
@@ -72,7 +73,7 @@ func Serve(p poll.Poll) {
 		w.Header().Add("Content-Type", "application/json")
 		if r.Method == "GET" {
 			answers := p.ListAnswers()
-			u := poll.NewUser(user)
+			u := poll.NewUser("", user)
 			for id := range answers {
 				answers[id].WithUser(u)
 			}
@@ -94,11 +95,17 @@ func Serve(p poll.Poll) {
 		if user, ok = verifyToken(r); !ok {
 			return
 		}
-		u := poll.NewUser(user)
+		u := poll.NewUser("", user)
 		if r.Method == "POST" {
 			r.ParseForm()
+			anonymous := r.Form["anonymous"][0] == "true"
 			content := r.Form["content"][0]
-			p.AddAnswer(u, poll.NewAnswer(content))
+			addressee, err := strconv.Atoi(r.Form["addressee"][0])
+			if err != nil {
+				addressee = 0
+			}
+			uAddressee := poll.NewUser(speakers.ReverseLookup(addressee))
+			p.AddAnswer(u, poll.NewAnswer(content, u, uAddressee, anonymous))
 			fmt.Printf("Posting answer %s: %v\n", "Value", content)
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
@@ -111,7 +118,7 @@ func Serve(p poll.Poll) {
 		if user, ok = verifyToken(r); !ok {
 			return
 		}
-		u := poll.NewUser(user)
+		u := poll.NewUser("", user)
 		paths := strings.Split(r.URL.Path, "/")
 		if len(paths) < 3 {
 			fmt.Printf("Unexpected vote request URI: %+v\n", r.URL.Path)
@@ -125,9 +132,38 @@ func Serve(p poll.Poll) {
 		}
 		p.ToggleVote(u, a)
 	}
+	respond := func(w http.ResponseWriter, r *http.Request) {
+		var user string
+		var ok bool
+		if user, ok = verifyToken(r); !ok {
+			return
+		}
+		u := poll.NewUser("", user)
+		paths := strings.Split(r.URL.Path, "/")
+		if len(paths) < 3 {
+			fmt.Printf("Unexpected response URI: %+v\n", r.URL.Path)
+			return
+		}
+		id := paths[len(paths)-1]
+		a, err := p.GetAnswerByID(id)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			return
+		}
+		if r.Method == "POST" {
+			r.ParseForm()
+			response := r.Form["response"][0]
+			a.WithResponse(response)
+			p.Respond(u, a)
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Printf("Bad request to submit response\n")
+		}
+	}
 	http.HandleFunc("/api/list", listAnswers)
 	http.HandleFunc("/api/add", addAnswer)
 	http.HandleFunc("/api/vote/", toggleVote)
+	http.HandleFunc("/api/respond/", respond)
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		panic(err)
 	}
