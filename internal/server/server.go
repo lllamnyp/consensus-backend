@@ -17,11 +17,9 @@ import (
 var hmacSampleSecret = []byte(os.Getenv("SIGNING_SECRET"))
 
 func verifyToken(r *http.Request) (string, string, bool) {
-	tokenCookie, err := r.Cookie("AuthToken")
-	tokenString := tokenCookie.Value
-	if err != nil {
-		return "", "", false
-	}
+	tokenHeader := r.Header["Authorization"][0]
+	tokenStrings := strings.Split(tokenHeader, " ")
+	tokenString := tokenStrings[len(tokenStrings)-1]
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		// Don't forget to validate the alg is what you expect:
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
