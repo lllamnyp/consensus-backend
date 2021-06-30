@@ -4,35 +4,45 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
+	// "errors"
+	"github.com/lllamnyp/consensus-backend/internal/speakers"
+	"time"
 )
 
 type Poll interface {
 	AddAnswer(User, Answer)
-	ListAnswers() map[string]Answer
+	ListAnswers() []Answer
+	Respond(User, Answer)
 	ToggleVote(User, Answer)
 	GetAnswerByID(string) (Answer, error)
 }
 
 type Answer interface {
-	HasVoted(u User) bool
-	GetContent() string
 	GetID() string
-	WithUser(User)
-	WithVoters(map[string]User)
+	GetAsker() User
+	GetAddressee() User
+	GetContent() string
+	GetResponse() string
 	GetWithUser() User
+	GetTimestamp() int
+	HasVoted(u User) bool
+	WithUser(User)
+	WithResponse(string)
+	WithVoters(map[string]User)
 	ToggleVote(u User)
 	MarshalJSON() ([]byte, error)
 }
 
 type User interface {
 	GetName() string
+	GetLogin() string
 	GetID() string
 }
 
 type Store interface {
 	AddAnswer(User, Answer)
-	ListAnswers() map[string]Answer
+	ListAnswers() []Answer
+	Respond(User, Answer)
 	ToggleVote(User, Answer)
 	GetAnswerByID(string) (Answer, error)
 }
@@ -45,7 +55,11 @@ func (p *poll) AddAnswer(u User, a Answer) {
 	p.store.AddAnswer(u, a)
 }
 
-func (p *poll) ListAnswers() map[string]Answer {
+func (p *poll) Respond(u User, a Answer) {
+	p.store.Respond(u, a)
+}
+
+func (p *poll) ListAnswers() []Answer {
 	return p.store.ListAnswers()
 }
 
@@ -58,10 +72,14 @@ func (p *poll) GetAnswerByID(id string) (Answer, error) {
 }
 
 type answer struct {
-	content  string
-	id       string
-	voters   map[string]User
-	withUser User
+	id        string
+	asker     User
+	addressee User
+	content   string
+	response  string
+	voters    map[string]User
+	timestamp int
+	withUser  User
 }
 
 func (a *answer) HasVoted(u User) bool {
@@ -76,44 +94,70 @@ func (a *answer) GetContent() string {
 	return a.content
 }
 
-func (a *answer) GetID() string {
-	return a.id
+func (a *answer) GetResponse() string {
+	return a.response
 }
 
-func (a *answer) WithUser(u User) {
-	a.withUser = u
+func (a *answer) GetAsker() User {
+	return a.asker
 }
 
-func (a *answer) WithVoters(v map[string]User) {
-	a.voters = v
+func (a *answer) GetAddressee() User {
+	return a.addressee
 }
 
 func (a *answer) GetWithUser() User {
 	return a.withUser
 }
 
+func (a *answer) GetTimestamp() int {
+	return a.timestamp
+}
+
+func (a *answer) WithUser(u User) {
+	a.withUser = u
+}
+
+func (a *answer) WithResponse(s string) {
+	a.response = s
+}
+
+func (a *answer) GetID() string {
+	return a.id
+}
+
 func (a *answer) ToggleVote(u User) {
-	if _, ok := a.voters[u.GetID()]; ok {
-		delete(a.voters, u.GetID())
-	} else {
+	if _, ok := a.voters[u.GetID()]; !ok {
 		a.voters[u.GetID()] = u
+		return
 	}
+	delete(a.voters, u.GetID())
+}
+
+func (a *answer) WithVoters(v map[string]User) {
+	a.voters = v
 }
 
 func (a *answer) MarshalJSON() ([]byte, error) {
 	var upvoted bool = a.HasVoted(a.withUser)
 	type marshalableAnswer struct {
-		Content string `json:"content"`
-		Upvoted bool   `json:"upvoted"`
-		Votes   int    `json:"votes"`
+		ID        string `json:"id"`
+		Asker     string `json:"asker"`
+		Addressee int    `json:"addressee"`
+		Content   string `json:"content"`
+		Response  string `json:"response"`
+		Upvoted   bool   `json:"upvoted"`
+		Votes     int    `json:"votes"`
+		Timestamp int    `json:"timestamp"`
 	}
-	return json.Marshal(marshalableAnswer{a.content, upvoted, len(a.voters)})
+	return json.Marshal(marshalableAnswer{a.id, a.asker.GetName(), speakers.Lookup(a.addressee.GetLogin()), a.content, a.response, upvoted, len(a.voters), a.timestamp})
 }
 
 func New(s Store) Poll {
 	return &poll{s}
 }
 
+/*
 func NewInMemoryStore() Store {
 	return &store{make(map[string]Answer)}
 }
@@ -148,18 +192,33 @@ func (s *store) GetAnswerByID(id string) (Answer, error) {
 	}
 	return nil, errors.New("No answer with id:" + id)
 }
-
-func NewAnswer(content string) Answer {
-	return &answer{content, hash(content), map[string]User{}, nil}
+*/
+func NewAnswer(content string, asker User, addressee User, anon bool) Answer {
+	ask := AnonymousUser()
+	add := AnonymousUser()
+	if addressee != nil {
+		add = addressee
+	}
+	votes := map[string]User{}
+	if !anon {
+		ask = asker
+		votes[asker.GetID()] = asker
+	}
+	return &answer{hash(content), ask, add, content, "", votes, int(time.Now().Unix()), nil}
 }
 
 type user struct {
-	name string
-	id   string
+	login string
+	name  string
+	id    string
 }
 
-func NewUser(name string) User {
-	return &user{name, hash(name)}
+func AnonymousUser() User {
+	return &user{"", "", ""}
+}
+
+func NewUser(name, login string) User {
+	return &user{login, name, hash(login)}
 }
 
 func (u *user) GetName() string {
@@ -168,6 +227,10 @@ func (u *user) GetName() string {
 
 func (u *user) GetID() string {
 	return u.id
+}
+
+func (u *user) GetLogin() string {
+	return u.login
 }
 
 func hash(s string) string {

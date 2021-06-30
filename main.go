@@ -16,6 +16,8 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
+
 	"github.com/go-redis/redis"
 	"github.com/lllamnyp/consensus-backend/internal/config"
 	"github.com/lllamnyp/consensus-backend/internal/redisstore"
@@ -34,8 +36,10 @@ func main() {
 	viper.BindPFlags(pflag.CommandLine)
 	var s poll.Store
 	if ep := viper.GetString("redis-endpoint"); ep == "" {
-		s = poll.NewInMemoryStore()
-		l.Info("Created new in-memory store")
+		fmt.Println("Cannot create in-memory store: not implemented. Use --redis-endpoint flag instead")
+		return
+		// s = poll.NewInMemoryStore()
+		//l.Info("Created new in-memory store")
 	} else {
 		rclient := redis.NewClient(&redis.Options{Addr: ep})
 		s = redisstore.NewRedisStore(rclient)
