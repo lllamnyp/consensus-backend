@@ -6,9 +6,9 @@ import (
 	"os"
 )
 
-var speakers map[string]int
-var speakerLogins map[int]string
-var speakerNames map[int]string
+var speakers = make(map[string]int)
+var speakerLogins = make(map[int]string)
+var speakerNames = make(map[int]string)
 
 func init() {
 	file, err := os.Open("/speakers")
