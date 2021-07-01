@@ -4,9 +4,12 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
+	"strings"
+
 	// "errors"
-	"github.com/lllamnyp/consensus-backend/internal/speakers"
 	"time"
+
+	"github.com/lllamnyp/consensus-backend/internal/speakers"
 )
 
 type Poll interface {
@@ -230,7 +233,7 @@ func (u *user) GetID() string {
 }
 
 func (u *user) GetLogin() string {
-	return u.login
+	return strings.ToLower(u.login)
 }
 
 func hash(s string) string {

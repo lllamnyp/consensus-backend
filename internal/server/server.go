@@ -124,7 +124,8 @@ func Serve(p poll.Poll) {
 				fmt.Printf("Could not parse body. Error: %s.\n", err)
 				return
 			}
-			uAddressee := poll.NewUser(speakers.ReverseLookup(addRequest.Addressee))
+			login, name := speakers.ReverseLookup(addRequest.Addressee)
+			uAddressee := poll.NewUser(login, name)
 			p.AddAnswer(u, poll.NewAnswer(addRequest.Content, u, uAddressee, addRequest.Anonymous))
 			fmt.Printf("Posting answer %s: %v\n", "Value", addRequest.Content)
 		} else {

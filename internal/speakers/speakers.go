@@ -2,8 +2,10 @@ package speakers
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 )
 
 var speakers = make(map[string]int)
@@ -20,7 +22,7 @@ func init() {
 	i := 1
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		login := scanner.Text()
+		login := strings.ToLower(scanner.Text())
 		speakers[login] = i
 		speakerLogins[i] = login
 		i++
@@ -46,7 +48,7 @@ func init() {
 	if err := scanner2.Err(); err != nil {
 		log.Fatal(err)
 	}
-
+	fmt.Printf("Loaded speakers:\n%+v\n%+v\n%+v\n", speakers, speakerLogins, speakerNames)
 }
 
 func Lookup(s string) int {
