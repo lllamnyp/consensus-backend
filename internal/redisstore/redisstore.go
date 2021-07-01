@@ -43,7 +43,7 @@ func (s *redisstore) ListAnswers() []poll.Answer {
 		voters := make(map[string]poll.User)
 		for _, voterid := range voterids {
 			voter := s.client.HGetAll("user:" + voterid).Val()
-			voters[voterid] = poll.NewUser(voter["name"], voter["login"])
+			voters[voterid] = poll.NewUser(voter["login"], voter["name"])
 		}
 		redisAnswer := s.client.HGetAll("answer:" + id).Val()
 
@@ -52,7 +52,7 @@ func (s *redisstore) ListAnswers() []poll.Answer {
 			asker = poll.AnonymousUser()
 		} else {
 			redisAsker := s.client.HGetAll("user:" + redisAnswer["asker"]).Val()
-			asker = poll.NewUser(redisAsker["name"], redisAsker["login"])
+			asker = poll.NewUser(redisAsker["login"], redisAsker["name"])
 		}
 
 		var addressee poll.User
@@ -60,7 +60,7 @@ func (s *redisstore) ListAnswers() []poll.Answer {
 			addressee = poll.AnonymousUser()
 		} else {
 			redisAddressee := s.client.HGetAll("user:" + redisAnswer["addressee"]).Val()
-			addressee = poll.NewUser(redisAddressee["name"], redisAddressee["login"])
+			addressee = poll.NewUser(redisAddressee["login"], redisAddressee["name"])
 		}
 		anon := asker.GetID() == ""
 
@@ -81,7 +81,7 @@ func (s *redisstore) GetAnswerByID(id string) (poll.Answer, error) {
 	voters := make(map[string]poll.User)
 	for _, voterid := range voterids {
 		voter := s.client.HGetAll("user:" + voterid).Val()
-		voters[voterid] = poll.NewUser(voter["name"], voter["login"])
+		voters[voterid] = poll.NewUser(voter["login"], voter["name"])
 	}
 	redisAnswer := s.client.HGetAll("answer:" + id).Val()
 
@@ -90,7 +90,7 @@ func (s *redisstore) GetAnswerByID(id string) (poll.Answer, error) {
 		asker = poll.AnonymousUser()
 	} else {
 		redisAsker := s.client.HGetAll("user:" + redisAnswer["asker"]).Val()
-		asker = poll.NewUser(redisAsker["name"], redisAsker["login"])
+		asker = poll.NewUser(redisAsker["login"], redisAsker["name"])
 	}
 
 	var addressee poll.User
@@ -98,7 +98,7 @@ func (s *redisstore) GetAnswerByID(id string) (poll.Answer, error) {
 		addressee = poll.AnonymousUser()
 	} else {
 		redisAddressee := s.client.HGetAll("user:" + redisAnswer["addressee"]).Val()
-		addressee = poll.NewUser(redisAddressee["name"], redisAddressee["login"])
+		addressee = poll.NewUser(redisAddressee["login"], redisAddressee["name"])
 	}
 	anon := asker.GetID() == ""
 

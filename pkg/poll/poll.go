@@ -220,7 +220,7 @@ func AnonymousUser() User {
 	return &user{"", "", ""}
 }
 
-func NewUser(name, login string) User {
+func NewUser(login, name string) User {
 	return &user{login, name, hash(login)}
 }
 
