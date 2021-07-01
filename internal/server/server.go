@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -13,6 +14,12 @@ import (
 	"github.com/lllamnyp/consensus-backend/internal/speakers"
 	"github.com/lllamnyp/consensus-backend/pkg/poll"
 )
+
+type AddRequest struct {
+	Content   string `json:"content"`
+	Anonymous bool   `json:"anonymous"`
+	Addressee int    `json:"addressee"`
+}
 
 var hmacSampleSecret = []byte(os.Getenv("SIGNING_SECRET"))
 
@@ -106,17 +113,20 @@ func Serve(p poll.Poll) {
 		}
 		u := poll.NewUser(login, user)
 		if r.Method == "POST" {
-			r.ParseForm()
-			anonymous := r.Form["anonymous"][0] == "true"
-			content := r.Form["content"][0]
-			addressee, err := strconv.Atoi(r.Form["addressee"][0])
+			body, err := ioutil.ReadAll(r.Body)
 			if err != nil {
-				fmt.Printf("Failed to convert %s to int. Error: %s\n.", r.Form["addressee"][0], err)
-				addressee = 0
+				fmt.Printf("Could not read body. Error: %s.\n", err)
+				return
 			}
-			uAddressee := poll.NewUser(speakers.ReverseLookup(addressee))
-			p.AddAnswer(u, poll.NewAnswer(content, u, uAddressee, anonymous))
-			fmt.Printf("Posting answer %s: %v\n", "Value", content)
+			var addRequest AddRequest
+			err = json.Unmarshal(body, &addRequest)
+			if err != nil {
+				fmt.Printf("Could not parse body. Error: %s.\n", err)
+				return
+			}
+			uAddressee := poll.NewUser(speakers.ReverseLookup(addRequest.Addressee))
+			p.AddAnswer(u, poll.NewAnswer(addRequest.Content, u, uAddressee, addRequest.Anonymous))
+			fmt.Printf("Posting answer %s: %v\n", "Value", addRequest.Content)
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Printf("Bad request to submit answer\n")
