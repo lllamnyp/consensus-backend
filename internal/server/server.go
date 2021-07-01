@@ -98,11 +98,23 @@ func verifyToken(r *http.Request) (string, string, bool) {
 		},
 		Body: reqBody,
 	}
-	resp, _ := http.DefaultClient.Do(req)
-	body, _ := ioutil.ReadAll(resp.Body)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fmt.Printf("Error sending request, err: %s.\n", err)
+		return "", "", false
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("Error reading body, err: %s.\n", err)
+		return "", "", false
+	}
 	resp.Body.Close()
 	bodyMap := make(map[string]interface{})
-	json.Unmarshal(body, &bodyMap)
+	err = json.Unmarshal(body, &bodyMap)
+	if err != nil {
+		fmt.Printf("Error unmarshaling body, err: %s.\n", err)
+		return "", "", false
+	}
 	fmt.Println(bodyMap["user_email"], bodyMap["name"])
 	return bodyMap["user_email"].(string), bodyMap["name"].(string), token.Valid
 }
