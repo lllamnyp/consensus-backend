@@ -80,7 +80,26 @@ func verifyToken(r *http.Request) (string, string, bool) {
 	}
 }
 
+func getEmail(login string) string {
+	dom := os.Getenv("RESTRICTED_DOMAIN")
+	if len(dom) > 0 {
+		parts := strings.Split(login, "@")
+		return parts[0] + `@` + dom
+	}
+	return login
+}
+
 func Serve(p poll.Poll) {
+	email := func(w http.ResponseWriter, r *http.Request) {
+		var login string
+		var ok bool
+		if login, _, ok = verifyToken(r); !ok {
+			w.Write([]byte("{}"))
+			return
+		}
+		email := getEmail(login)
+		w.Write([]byte(`{"email":"` + email + `"}`))
+	}
 	listAnswers := func(w http.ResponseWriter, r *http.Request) {
 		var login string
 		var user string
@@ -200,6 +219,7 @@ func Serve(p poll.Poll) {
 	http.HandleFunc("/api/add", addAnswer)
 	http.HandleFunc("/api/vote/", toggleVote)
 	http.HandleFunc("/api/respond/", respond)
+	http.HandleFunc("/api/email", email)
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		panic(err)
 	}
