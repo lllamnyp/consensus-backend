@@ -1,12 +1,14 @@
 package server
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
+
 	// "strconv"
 	"strings"
 	// "time"
@@ -90,6 +92,7 @@ func verifyToken(r *http.Request) (string, string, bool) {
 	}
 	reqURL, _ := url.Parse(os.Getenv("USER_ENDPOINT") + id)
 	reqBody := ioutil.NopCloser(strings.NewReader(""))
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	req := &http.Request{
 		Method: "GET",
 		URL:    reqURL,
