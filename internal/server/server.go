@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
-	"strconv"
+	// "strconv"
 	"strings"
-	"time"
+	// "time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/lllamnyp/consensus-backend/internal/speakers"
@@ -38,46 +39,72 @@ func verifyToken(r *http.Request) (string, string, bool) {
 		}
 		return hmacSampleSecret, nil
 	})
-
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		nafClaim, ok := claims["naf"]
-		if !ok {
-			fmt.Printf("JWT token missing naf claim\n")
-			return "", "", false
-		}
-		nafString, ok := nafClaim.(string)
-		if !ok {
-			fmt.Printf("naf claim in token holds unexpected value %s: %v\n", "claim", nafClaim)
-			return "", "", false
-		}
-		if naf, err := strconv.Atoi(nafString); err != nil || time.Now().Unix()*1000 > int64(naf) {
-			return "", "", false
-		}
-		usrClaim, ok := claims["username"]
-		if !ok {
-			fmt.Printf("JWT token missing usr claim\n")
-			return "", "", false
-		}
-		usrString, ok := usrClaim.(string)
-		if !ok {
-			fmt.Printf("usr claim in token holds unexpected value %s: %v\n", "claim", usrClaim)
-			return "", "", false
-		}
-		subClaim, ok := claims["sub"]
-		if !ok {
-			fmt.Printf("JWT token missing usr claim\n")
-			return "", "", false
-		}
-		subString, ok := subClaim.(string)
-		if !ok {
-			fmt.Printf("sub claim in token holds unexpected value %s: %v\n", "claim", subClaim)
-			return "", "", false
-		}
-		return subString, usrString, true
-	} else {
-		fmt.Println(err)
-		return "", "", false
+	if err != nil {
+		fmt.Printf("Failed parsing token, error: %s.\n", err)
 	}
+
+	/*
+		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+			nafClaim, ok := claims["naf"]
+			if !ok {
+				fmt.Printf("JWT token missing naf claim\n")
+				return "", "", false
+			}
+			nafString, ok := nafClaim.(string)
+			if !ok {
+				fmt.Printf("naf claim in token holds unexpected value %s: %v\n", "claim", nafClaim)
+				return "", "", false
+			}
+			if naf, err := strconv.Atoi(nafString); err != nil || time.Now().Unix()*1000 > int64(naf) {
+				return "", "", false
+			}
+			usrClaim, ok := claims["username"]
+			if !ok {
+				fmt.Printf("JWT token missing usr claim\n")
+				return "", "", false
+			}
+			usrString, ok := usrClaim.(string)
+			if !ok {
+				fmt.Printf("usr claim in token holds unexpected value %s: %v\n", "claim", usrClaim)
+				return "", "", false
+			}
+			subClaim, ok := claims["sub"]
+			if !ok {
+				fmt.Printf("JWT token missing usr claim\n")
+				return "", "", false
+			}
+			subString, ok := subClaim.(string)
+			if !ok {
+				fmt.Printf("sub claim in token holds unexpected value %s: %v\n", "claim", subClaim)
+				return "", "", false
+			}
+			return subString, usrString, true
+		} else {
+			fmt.Println(err)
+			return "", "", false
+		}*/
+	var id string
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		id = claims["data"].(map[string]interface{})["user"].(map[string]interface{})["id"].(string)
+		fmt.Println(id)
+	}
+	reqURL, _ := url.Parse(os.Getenv("USER_ENDPOINT") + id)
+	reqBody := ioutil.NopCloser(strings.NewReader(""))
+	req := &http.Request{
+		Method: "GET",
+		URL:    reqURL,
+		Header: map[string][]string{
+			"Authorization": {"Bearer " + tokenString},
+		},
+		Body: reqBody,
+	}
+	resp, _ := http.DefaultClient.Do(req)
+	body, _ := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	bodyMap := make(map[string]interface{})
+	json.Unmarshal(body, &bodyMap)
+	fmt.Println(bodyMap["user_email"], bodyMap["name"])
+	return bodyMap["user_email"].(string), bodyMap["name"].(string), token.Valid
 }
 
 func getEmail(login string) string {
@@ -194,6 +221,9 @@ func Serve(p poll.Poll) {
 		a, err := p.GetAnswerByID(id)
 		if err != nil {
 			fmt.Printf("%s\n", err)
+			return
+		}
+		if getEmail(a.GetAddressee().GetLogin()) != getEmail(login) {
 			return
 		}
 		if r.Method == "POST" {
