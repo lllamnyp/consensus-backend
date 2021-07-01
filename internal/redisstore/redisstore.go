@@ -72,7 +72,7 @@ func (s *redisstore) ListAnswers() []poll.Answer {
 }
 
 func (s *redisstore) GetAnswerByID(id string) (poll.Answer, error) {
-	exists := s.client.Exists("answers:" + id).Val()
+	exists := s.client.Exists("answer:" + id).Val()
 	if exists != 1 {
 		return nil, errors.New("No answer with id:" + id)
 	}
