@@ -111,6 +111,7 @@ func Serve(p poll.Poll) {
 			content := r.Form["content"][0]
 			addressee, err := strconv.Atoi(r.Form["addressee"][0])
 			if err != nil {
+				fmt.Printf("Failed to convert %s to int. Error: %s\n.", r.Form["addressee"][0], err)
 				addressee = 0
 			}
 			uAddressee := poll.NewUser(speakers.ReverseLookup(addressee))
