@@ -30,6 +30,7 @@ func (s *redisstore) AddAnswer(u poll.User, a poll.Answer) {
 	if u.GetID() != "" {
 		s.client.SAdd("voters:"+a.GetID(), u.GetID())
 		s.client.HMSet("user:"+u.GetID(), map[string]interface{}{"login": u.GetLogin(), "name": u.GetName()})
+		s.client.HMSet("user:"+a.GetAddressee().GetID(), map[string]interface{}{"login": a.GetAddressee().GetLogin(), "name": a.GetAddressee().GetName()})
 	}
 	return
 }
