@@ -21,6 +21,10 @@ type AddRequest struct {
 	Addressee int    `json:"addressee"`
 }
 
+type RespondRequest struct {
+	Response string `json:"response"`
+}
+
 var hmacSampleSecret = []byte(os.Getenv("SIGNING_SECRET"))
 
 func verifyToken(r *http.Request) (string, string, bool) {
@@ -174,9 +178,18 @@ func Serve(p poll.Poll) {
 			return
 		}
 		if r.Method == "POST" {
-			r.ParseForm()
-			response := r.Form["response"][0]
-			a.WithResponse(response)
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				fmt.Printf("Could not read body. Error: %s.\n", err)
+				return
+			}
+			var respondRequest RespondRequest
+			err = json.Unmarshal(body, &respondRequest)
+			if err != nil {
+				fmt.Printf("Could not parse body. Error: %s.\n", err)
+				return
+			}
+			a.WithResponse(respondRequest.Response)
 			p.Respond(u, a)
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
