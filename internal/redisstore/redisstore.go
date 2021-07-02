@@ -119,12 +119,14 @@ func (s *redisstore) Respond(u poll.User, a poll.Answer) {
 }
 
 func (s *redisstore) ToggleVote(u poll.User, a poll.Answer) {
-	fmt.Printf("Voting for answer id %s with user id %s.\n", a.GetID(), u.GetID())
+	fmt.Printf("Toggle vote for answer id %s with user id %s.\n", a.GetID(), u.GetID())
 	exists := s.client.SIsMember("voters:"+a.GetID(), u.GetID()).Val()
 	if exists {
+		fmt.Printf("Remove vote for answer id %s with user id %s.\n", a.GetID(), u.GetID())
 		s.client.SRem("voters:"+a.GetID(), u.GetID())
 		return
 	}
-	s.client.SAdd("voters:"+a.GetID(), u.GetID)
+	result := s.client.SAdd("voters:"+a.GetID(), u.GetID).Val()
+	fmt.Printf("Add vote for answer id %s with user id %s. SADD == %d.\n", a.GetID(), u.GetID(), result)
 	s.client.HMSet("user:"+u.GetID(), map[string]interface{}{"login": u.GetLogin(), "name": u.GetName()})
 }
