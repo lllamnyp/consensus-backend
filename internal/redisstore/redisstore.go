@@ -2,6 +2,7 @@ package redisstore
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/go-redis/redis"
@@ -118,6 +119,7 @@ func (s *redisstore) Respond(u poll.User, a poll.Answer) {
 }
 
 func (s *redisstore) ToggleVote(u poll.User, a poll.Answer) {
+	fmt.Printf("Voting for answer id %s with user id %s.\n", a.GetID(), u.GetID())
 	exists := s.client.SIsMember("voters:"+a.GetID(), u.GetID()).Val()
 	if exists {
 		s.client.SRem("voters:"+a.GetID(), u.GetID())

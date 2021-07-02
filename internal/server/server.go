@@ -203,6 +203,7 @@ func Serve(p poll.Poll) {
 		var user string
 		var ok bool
 		if login, user, ok = verifyToken(r); !ok {
+			fmt.Println("Failed to verify voters token")
 			return
 		}
 		u := poll.NewUser(login, user)
