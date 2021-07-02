@@ -126,7 +126,7 @@ func (s *redisstore) ToggleVote(u poll.User, a poll.Answer) {
 		s.client.SRem("voters:"+a.GetID(), u.GetID())
 		return
 	}
-	result := s.client.SAdd("voters:"+a.GetID(), u.GetID).Val()
+	result := s.client.SAdd("voters:"+a.GetID(), u.GetID()).Val()
 	fmt.Printf("Add vote for answer id %s with user id %s. SADD == %d.\n", a.GetID(), u.GetID(), result)
 	s.client.HMSet("user:"+u.GetID(), map[string]interface{}{"login": u.GetLogin(), "name": u.GetName()})
 }
