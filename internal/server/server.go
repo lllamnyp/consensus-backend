@@ -31,6 +31,9 @@ type RespondRequest struct {
 var hmacSampleSecret = []byte(os.Getenv("SIGNING_SECRET"))
 
 func verifyToken(r *http.Request) (string, string, bool) {
+	if os.Getenv("SKIP_AUTH") == "true" {
+		return "", "", true
+	}
 	tokenHeader := r.Header["Authorization"][0]
 	tokenStrings := strings.Split(tokenHeader, " ")
 	tokenString := tokenStrings[len(tokenStrings)-1]
@@ -261,11 +264,15 @@ func Serve(p poll.Poll) {
 			fmt.Printf("Bad request to submit response\n")
 		}
 	}
+	listSpeakers := func(w http.ResponseWriter, r *http.Request) {
+
+	}
 	http.HandleFunc("/api/list", listAnswers)
 	http.HandleFunc("/api/add", addAnswer)
 	http.HandleFunc("/api/vote/", toggleVote)
 	http.HandleFunc("/api/respond/", respond)
 	http.HandleFunc("/api/email", email)
+	http.HandleFunc("/api/speakers", listSpeakers)
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		panic(err)
 	}
